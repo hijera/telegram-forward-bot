@@ -9,8 +9,8 @@ import telepot
 import time
 from telepot.loop import MessageLoop
 
-def save_status(obj):
-    with open('chats.json', 'w') as f:
+def save_status(obj,fname):
+    with open(fname+'.json', 'w') as f:
         f.write(json.dumps(obj))
 
 def save_allowed(s):
@@ -18,18 +18,29 @@ def save_allowed(s):
         f.write(json.dumps(list(s)))
 
 if not os.path.isfile('chats.json'):
-    save_status({})
+    save_status({},'chats')
+if not os.path.isfile('from.json'):
+    save_status({},'from')
+if not os.path.isfile('to.json'):
+    save_status({},'to')
+
 
 if not os.path.isfile('allowed.json'):
     save_allowed(set())
 
 chats = {}
+cfrom = []
+cto = []
 allowed = []
 TOKEN = ""
 PASSWORD = "changeme"
 
 with open('chats.json', 'r') as f:
     chats = json.load(f)
+with open('from.json','r') as f:
+    cfrom = json.load(f)
+with open('to.json','r') as f:
+    cto = json.load(f)
 
 with open('allowed.json', 'r') as f:
     allowed = set(json.load(f))
@@ -82,7 +93,25 @@ def handle(msg):
             bot.sendMessage(chat_id, "Your permission for using the bot was removed successfully.")
     if is_allowed(msg):
         if txt != "":
-            if "/add " == txt[:5]:
+            if "/from" == txt[:5]:
+                name = ""
+                if msg['chat']['type'] == "private":
+                    name = name + "Personal chat with " + msg['chat']['first_name'] + ((" " + msg['chat']['last_name']) if 'last_name' in msg['chat'] else "")
+                else:
+                    name = msg['chat']['title']
+                cfrom[chat_id]={'id': chat_id, 'name': name}
+                bot.sendMessage(chat_id, name + " added from channel")
+                save_status(cfrom,'from')
+            elif "/to" == txt[:3]:
+                name = ""
+                if msg['chat']['type'] == "private":
+                    name = name + "Chat of " + msg['chat']['first_name'] + ((" " + msg['chat']['last_name']) if 'last_name' in msg['chat'] else "")
+                else:
+                    name = msg['chat']['title']
+                cto[chat_id]={'id': chat_id, 'name': name}
+                bot.sendMessage(chat_id, name + " added from channel")
+                save_status(cto,'to')
+            elif "/add " == txt[:5]:
                 txt_split = txt.strip().split(" ")
                 if len(txt_split) == 2 and "#" == txt_split[1][0]:
                     tag = txt_split[1].lower()
@@ -93,7 +122,7 @@ def handle(msg):
                         name = msg['chat']['title']
                     chats[tag] = {'id': chat_id, 'name': name}
                     bot.sendMessage(chat_id, name + " added with tag " + tag)
-                    save_status(chats)
+                    save_status(chats,'chats')
                 else:
                     bot.sendMessage(chat_id, "Incorrect format. It should be _/add #{tag}_", parse_mode="Markdown")
             elif "/rm " == txt[:4]:
@@ -104,7 +133,7 @@ def handle(msg):
                         if chats[tag]['id'] == chat_id:
                             del chats[tag]
                             bot.sendMessage(chat_id, "Tag "+tag+" deleted from taglist.")
-                            save_status(chats)
+                            save_status(chats,'chats')
                             return
                         else:
                             bot.sendMessage(chat_id, "You can't delete a chat's tag from a different chat.")
@@ -144,6 +173,15 @@ def handle(msg):
                         bot.sendMessage(chat_id, "Failed to send messages to tags <i>" + ", ".join(rejected) + "</i>", parse_mode="HTML")
                 else:
                     bot.sendMessage(chat_id, "Failed to send a message only with tags which is not a reply to another message")
+            else:
+                chat_id_from=''
+                for chatid,item in cfrom.items():
+                    if item['id'] == chat_id:
+                        print('found item')
+                        print(cto)
+                        for k2,item_c in cto.items():
+
+                
 
 bot = telepot.Bot(TOKEN)
 
